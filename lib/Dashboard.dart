@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:sembast/sembast.dart';
+import 'package:sembast_web/sembast_web.dart';
 
 void main() {
   runApp(MyApp());
@@ -14,7 +16,64 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomePage(),
+      home: LoginPage(),
+    );
+  }
+}
+
+class LoginPage extends StatelessWidget {
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Login'),
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            TextField(
+              controller: _usernameController,
+              decoration: InputDecoration(labelText: 'Username'),
+            ),
+            TextField(
+              controller: _passwordController,
+              decoration: InputDecoration(labelText: 'Password'),
+              obscureText: true,
+            ),
+            SizedBox(height: 20.0),
+            ElevatedButton(
+              onPressed: () async {
+                bool isAuthenticated = await authenticateUser(
+                    _usernameController.text, _passwordController.text);
+                if (isAuthenticated) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => HomePage()),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Invalid username or password')));
+                }
+              },
+              child: Text('Login'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => SignupPage()),
+                );
+              },
+              child: Text('Sign Up'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -32,7 +91,7 @@ class HomePage extends StatelessWidget {
           children: <Widget>[
             DrawerHeader(
               decoration: BoxDecoration(
-                color: Colors.blue,
+                color: Colors.green,
               ),
               child: Text(
                 'Menu',
@@ -64,6 +123,68 @@ class HomePage extends StatelessWidget {
         child: Text(
           'Welcome to the Pokemon World!',
           style: TextStyle(fontSize: 24),
+        ),
+      ),
+    );
+  }
+}
+
+Future<Database> openDB() async {
+  return databaseFactoryWeb.openDatabase('user_database.db');
+}
+
+Future<void> saveUser(String username, String password) async {
+  final Database db = await openDB();
+  final store = intMapStoreFactory.store('users');
+  await store.add(db, {'username': username, 'password': password});
+}
+
+Future<bool> authenticateUser(String username, String password) async {
+  final Database db = await openDB();
+  final store = intMapStoreFactory.store('users');
+  final finder = Finder(filter: Filter.and([
+    Filter.equals('username', username),
+    Filter.equals('password', password),
+  ]));
+  final recordSnapshots = await store.find(db, finder: finder);
+  return recordSnapshots.isNotEmpty;
+}
+
+class SignupPage extends StatelessWidget {
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Sign Up'),
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            TextField(
+              controller: _usernameController,
+              decoration: InputDecoration(labelText: 'Username'),
+            ),
+            TextField(
+              controller: _passwordController,
+              decoration: InputDecoration(labelText: 'Password'),
+              obscureText: true,
+            ),
+            SizedBox(height: 20.0),
+            ElevatedButton(
+              onPressed: () async {
+                await saveUser(_usernameController.text, _passwordController.text);
+                ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('User created successfully')));
+                Navigator.pop(context);
+              },
+              child: Text('Sign Up'),
+            ),
+          ],
         ),
       ),
     );
